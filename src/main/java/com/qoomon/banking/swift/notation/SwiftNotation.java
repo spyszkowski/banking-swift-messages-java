@@ -83,7 +83,8 @@ public class SwiftNotation {
 
     private final String notation;
     private final List<FieldNotation> swiftFieldNotations;
-    private final List<Pattern> swiftFieldNotationPatterns;
+    private final List<List<Pattern>> swiftFieldNotationPatterns;
+
 
 
     public SwiftNotation(String notation) {
@@ -112,7 +113,7 @@ public class SwiftNotation {
         int fieldIndex = -1;
         for (FieldNotation fieldNotation : swiftFieldNotations) {
             fieldIndex++;
-            Pattern fieldPattern = swiftFieldNotationPatterns.get(fieldIndex);
+            Pattern fieldPattern = swiftFieldNotationPatterns.get(fieldIndex).get(0);
             String fieldValue = fieldValues.get(fieldIndex);
 
             if (fieldValue == null) {
@@ -156,13 +157,19 @@ public class SwiftNotation {
         int fieldIndex = -1;
         for (FieldNotation fieldNotation : swiftFieldNotations) {
             fieldIndex++;
-            Pattern fieldPattern = swiftFieldNotationPatterns.get(fieldIndex);
 
-            Matcher fieldMatcher = fieldPattern.matcher(fieldText).region(parseIndex, fieldText.length());
-            if (!fieldMatcher.find()) {
-                throw new FieldNotationParseException("Field does not match notation " + fieldNotation + ". "
-                        + "'" + fieldText.substring(parseIndex) + "'", parseIndex);
+            Matcher fieldMatcher = null;
+
+            for(Pattern fieldPattern: swiftFieldNotationPatterns.get(fieldIndex)) {
+
+                fieldMatcher = fieldPattern.matcher(fieldText).region(parseIndex, fieldText.length());
+                if (!fieldMatcher.find()) {
+                    throw new FieldNotationParseException("Field does not match notation " + fieldNotation + ". "
+                            + "'" + fieldText.substring(parseIndex) + "'", parseIndex);
+                }
             }
+
+
             String fieldValue = fieldMatcher.group(1);
 
             parseIndex = fieldMatcher.end();
@@ -199,10 +206,10 @@ public class SwiftNotation {
      * @param fieldNotationList
      * @return patterns for continuous field matching
      */
-    private static List<Pattern> generateSubfieldPatterns(List<FieldNotation> fieldNotationList) {
+    private static List<List<Pattern>> generateSubfieldPatterns(List<FieldNotation> fieldNotationList) {
         Preconditions.checkArgument(fieldNotationList != null, "fieldNotationList can't be null");
 
-        List<Pattern> patterns = new ArrayList<>(fieldNotationList.size());
+        List<List<Pattern>> patterns = new ArrayList<>(fieldNotationList.size());
         int fieldIndex = -1;
         for (FieldNotation currentSubfield : fieldNotationList) {
             fieldIndex++;
@@ -231,6 +238,7 @@ public class SwiftNotation {
 
             // create field regex
             String subFieldRegex;
+            String subFieldRegex2 = null;
 
             // handle length
             Optional<String> lengthSign = currentSubfield.getLengthSign();
@@ -255,9 +263,10 @@ public class SwiftNotation {
                         int maxLineCharacters = currentSubfield.getLength1().get();
                         String lineCharactersRegexRange = "{1," + maxLineCharacters + "}";
                         String lineRegex = "[^\\n]" + lineCharactersRegexRange;
-                        subFieldRegex = "(?=" + lineRegex + "(\\n" + lineRegex + ")" + "{0," + (maxLines - 1) + "}" + "$)" // lookahead for maxLines
-                                + "(?:" + delimiterLookaheadRegex + charSetRegex + "|\\n)" // add new line character to charset
+                        subFieldRegex = "(" + lineRegex + "(\\n" + lineRegex + ")" + "{0," + (maxLines - 1) + "}" + "$)"; // lookahead for maxLines
+                        subFieldRegex2 = "(?:" + delimiterLookaheadRegex + charSetRegex + "|\\n)" // add new line character to charset
                                 + "{1," + (maxLines * maxLineCharacters + (maxLines - 1)) + "}$";  // calculate max length including newline signs
+
                         break;
                     }
                     default:
@@ -267,20 +276,35 @@ public class SwiftNotation {
 
             // group field value
             subFieldRegex = "(" + subFieldRegex + ")";
+            if (subFieldRegex2 != null) {
+                subFieldRegex2 = "(" + subFieldRegex2 + ")";
+            }
 
             // handle prefix
             Optional<String> prefix = currentSubfield.getPrefix();
             if (prefix.isPresent()) {
                 subFieldRegex = SEPARATOR_MAP.get(prefix.get()) + subFieldRegex;
+                if (subFieldRegex2 != null) {
+                    subFieldRegex2 = SEPARATOR_MAP.get(prefix.get()) + subFieldRegex2;
+                }
             }
 
             // make field optional if so
             if (currentSubfield.isOptional()) {
                 subFieldRegex = "(?:" + subFieldRegex + ")?";
+                if (subFieldRegex2 != null) {
+                    subFieldRegex2 = "(?:" + subFieldRegex2 + ")?";
+                }
             }
 
+            List<Pattern> patternList=new ArrayList<>();
             Pattern pattern = Pattern.compile("^" + subFieldRegex);
-            patterns.add(pattern);
+            patternList.add(pattern);
+            if (subFieldRegex2 != null) {
+                Pattern pattern2 = Pattern.compile("^" + subFieldRegex2);
+                patternList.add(pattern2);
+            }
+            patterns.add(patternList);
         }
 
         return ImmutableList.copyOf(patterns);
