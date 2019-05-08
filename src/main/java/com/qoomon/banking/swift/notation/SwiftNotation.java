@@ -228,18 +228,18 @@ public class SwiftNotation {
             Optional<String> lengthSign = currentSubfield.getLengthSign();
             if (!lengthSign.isPresent()) {
                 int maxCharacters = currentSubfield.getLength0();
-                subFieldRegex = "(:?" + delimiterLookaheadRegex + charSetRegex + ")" + "{1," + maxCharacters + "}";
+                subFieldRegex = "(?:" + delimiterLookaheadRegex + charSetRegex + ")" + "{1," + maxCharacters + "}";
             } else {
                 switch (lengthSign.get()) {
                     case FieldNotation.FIXED_LENGTH_SIGN: {
                         int fixedCharacters = currentSubfield.getLength0();
-                        subFieldRegex = "(:?" + delimiterLookaheadRegex + charSetRegex + ")" + "{" + fixedCharacters + "}";
+                        subFieldRegex = "(?:" + delimiterLookaheadRegex + charSetRegex + ")" + "{" + fixedCharacters + "}";
                         break;
                     }
                     case FieldNotation.RANGE_LENGTH_SIGN: {
                         int minCharacters = currentSubfield.getLength0();
                         int maxCharacters = currentSubfield.getLength1().get();
-                        subFieldRegex = "(:?" + delimiterLookaheadRegex + charSetRegex + ")" + "{" + minCharacters + "," + maxCharacters + "}";
+                        subFieldRegex = "(?:" + delimiterLookaheadRegex + charSetRegex + ")" + "{" + minCharacters + "," + maxCharacters + "}";
                         break;
                     }
                     case FieldNotation.MULTILINE_LENGTH_SIGN: {
@@ -248,7 +248,7 @@ public class SwiftNotation {
                         String lineCharactersRegexRange = "{1," + maxLineCharacters + "}";
                         String lineRegex = "[^\\n]" + lineCharactersRegexRange;
                         subFieldRegex = "(?=" + lineRegex + "(\\n" + lineRegex + ")" + "{0," + (maxLines - 1) + "}" + "$)" // lookahead for maxLines
-                                + "(:?" + delimiterLookaheadRegex + "(:?" + charSetRegex + "|\\n)" + ")" // add new line character to charset
+                                + "(?:" + delimiterLookaheadRegex + charSetRegex + "|\\n)" // add new line character to charset
                                 + "{1," + (maxLines * maxLineCharacters + (maxLines - 1)) + "}$";  // calculate max length including newline signs
                         break;
                     }
