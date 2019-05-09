@@ -264,7 +264,7 @@ public class SwiftNotation {
                         String lineCharactersRegexRange = "{1," + maxLineCharacters + "}";
                         String lineRegex = "[^\\n]" + lineCharactersRegexRange;
                         subFieldRegex = "(" + lineRegex + "(\\n" + lineRegex + ")" + "{0," + (maxLines - 1) + "}" + "$)"; // lookahead for maxLines
-                        subFieldRegex2 = "(?:" + delimiterLookaheadRegex + charSetRegex + "|\\n)" // add new line character to charset
+                        subFieldRegex2 = "(?:" + delimiterLookaheadRegex + charSetRegex.replaceFirst("]", "\\\n]" ) + ")" // add new line character to charset
                                 + "{1," + (maxLines * maxLineCharacters + (maxLines - 1)) + "}$";  // calculate max length including newline signs
 
                         break;
